@@ -21,7 +21,7 @@
             </intent-filter>
         </activity>
         <meta-data android:name="com.google.android.geo.API_KEY"
-            android:value="記得補上金鑰"/>
+            android:value="AIzaSyCKQWWx19SvHmKqbpn-PRQQf51Ui5plCik"/>
         <uses-library android:name="org.apache.http.legacy" android:required="false"/>
     </application>
 

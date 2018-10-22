@@ -3,6 +3,7 @@ package tw.edu.tut.mis.gps1001;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.os.Handler;
 import android.os.PersistableBundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -28,6 +29,7 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.List;
+import java.util.UUID;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -37,8 +39,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     FusedLocationProviderClient MLPC;
     final String TAG = "necro-wbj";
-    private GoogleMap gMap;
+    private GoogleMap gMap = null;
     boolean isGPS_ON;
+    String mUserID;
+    String mTempUserID = UUID.randomUUID().toString();
+    double mlat=23.038, mlon=120.237;
+    Handler timerHandler = new Handler();
+
     @BindView(R.id.gpsswitch) ImageButton gpsSwtichButton;
     MapView mapView;
 
@@ -54,6 +61,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mapView.getMapAsync(this);
         if (savedInstanceState != null){
             isGPS_ON = savedInstanceState.getBoolean("GPS_ON",true);
+            mUserID = mTempUserID;
         }else {
             isGPS_ON = true;
         }
@@ -63,6 +71,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onSaveInstanceState(Bundle outState, PersistableBundle outPersistentState) {
         Log.d(TAG,"儲存GPS開關職狀態");
         outState.putBoolean("GPS_ON",isGPS_ON);
+        outState.putString("USER_ID",mTempUserID);
         super.onSaveInstanceState(outState, outPersistentState);
     }
 
@@ -70,6 +79,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     protected void onRestoreInstanceState(Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
         isGPS_ON = savedInstanceState.getBoolean("GPS_ON",true);
+        mUserID = savedInstanceState.getString("USER_ID",mTempUserID);
     }
 
     @OnClick(R.id.gpsswitch)
@@ -93,13 +103,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             List<Location> locations = locationResult.getLocations();
             if (locations.size() > 0) {
                 Location loc = locations.get(locations.size() - 1);
-                double lat, lon;
-                lat = loc.getLatitude();
-                lon = loc.getLongitude();
-                Log.d(TAG, "location:(" + lat + "," + lon + ")");
-                ((TextView)findViewById(R.id.test)).setText("經緯度:(" + lat + "," + lon + ")");
-                LatLng pos = new LatLng(lat,lon);
+                mlat = loc.getLatitude();
+                mlon = loc.getLongitude();
+                Log.d(TAG, "location:(" + mlat + "," + mlon + ")");
+                ((TextView)findViewById(R.id.test)).setText("經緯度:(" + mlat + "," + mlon + ")");
+                LatLng pos = new LatLng(mlat,mlon);
                 gMap.moveCamera(CameraUpdateFactory.newLatLng(pos));
+                gMap.clear();
                 gMap.addMarker(new MarkerOptions().position(pos).title("目前位置"));
             }
         }
@@ -112,8 +122,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             if(grantResults[0]==PackageManager.PERMISSION_GRANTED){
                 StartLocationUpdat();
             }else{
-                Log.e(TAG,"沒有開啟定位權限");
-                Toast.makeText(this,"必須要開啟定位權限方可使用",Toast.LENGTH_LONG).show();
+                Log.e(TAG,"沒有開啟允許定位的權限");
+                Toast.makeText(this,"必須要開啟允許定位的權限才能正常使用",Toast.LENGTH_LONG).show();
             }
         }
     }
@@ -131,11 +141,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         req.setFastestInterval(5000);
         req.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         MLPC.requestLocationUpdates(req, LCB, null);
-    };
+    }
     void StopLocationUpdate(){
         MLPC.removeLocationUpdates(LCB);
 
-    };
+    }
 
     @Override
     protected void onResume() {
@@ -144,6 +154,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             StartLocationUpdat();
         }
         mapView.onResume();
+        timerHandler.postDelayed(timerTask,0);
     }
 
     @Override
@@ -153,6 +164,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             StopLocationUpdate();
         }
         mapView.onPause();
+        timerHandler.removeCallbacks(timerTask);
     }
 
     @Override
@@ -172,4 +184,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         gMap = googleMap;
         googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(23.038,120.237),17));
     }
+
+    Runnable timerTask = new Runnable() {
+        @Override
+        public void run() {
+
+            Log.d(TAG, "啟動:" + mlat + "," + mlon);
+            if( gMap != null ){
+                LatLng pos = new LatLng(mlat, mlon);
+                gMap.moveCamera(CameraUpdateFactory.newLatLng(pos));
+                gMap.clear();
+                gMap.addMarker(new MarkerOptions().position(pos).title("目前位置"));
+            }
+            timerHandler.postDelayed(this,5000);
+
+        }
+    };
 }

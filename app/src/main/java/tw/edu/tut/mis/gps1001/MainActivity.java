@@ -227,8 +227,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                     @Override
                     public void onResponse(Call call, Response response) throws IOException {
-                        List<GPSData> datas = mJSONRecv.fromJson(response.body().source());
-                        //TODO
+                        final List<GPSData> datas = mJSONRecv.fromJson(response.body().source());
+                        if(datas.size()>0 && isGPS_ON){
+                            MainActivity.this.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    for(int i=0;i<datas.size();i=i+1){
+                                        GPSData data = datas.get(i);
+                                        LatLng pos = new LatLng(mlat,mlon);
+                                        gMap.clear();
+                                        gMap.addMarker(new MarkerOptions().position(pos).title(data.user));
+                                    }
+                                }
+                            });
+                        }
                     }
                 });
             }

@@ -1,6 +1,7 @@
 package tw.edu.tut.mis.gps1001;
 
 import android.Manifest;
+import android.app.DownloadManager;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Handler;
@@ -27,13 +28,24 @@ import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.squareup.moshi.JsonAdapter;
+import com.squareup.moshi.Moshi;
+import com.squareup.moshi.Types;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
@@ -185,6 +197,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(23.038,120.237),17));
     }
 
+    private final OkHttpClient httpProcessor = new OkHttpClient(); //mHTTP
+    private final Moshi jsonProcessor = new Moshi.Builder().build(); //mMoshi
+    private final JsonAdapter<GPSData> mJSONSend = jsonProcessor.adapter(GPSData.class);
+    private final JsonAdapter<List<GPSData>> mJSONRecv = jsonProcessor.adapter(Types.newParameterizedType(List.class,GPSData.class));
     Runnable timerTask = new Runnable() {
         @Override
         public void run() {
@@ -195,9 +211,37 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 gMap.moveCamera(CameraUpdateFactory.newLatLng(pos));
                 gMap.clear();
                 gMap.addMarker(new MarkerOptions().position(pos).title("目前位置"));
+
+                GPSData data = new GPSData();
+                data.user = "柏君";
+                data.lat=mlat;
+                data.lon=mlon;
+                data.uuid=mUserID;
+
+                Request okHttpRequest = new Request.Builder().url("http://fili.tw:18888/update").post(RequestBody.create(MediaType.parse("application/json; chareset=utf-8"),mJSONSend.toJson(data))).build(); //req
+                httpProcessor.newCall(okHttpRequest).enqueue(new Callback() {
+                    @Override
+                    public void onFailure(Call call, IOException e) {
+
+                    }
+
+                    @Override
+                    public void onResponse(Call call, Response response) throws IOException {
+                        List<GPSData> datas = mJSONRecv.fromJson(response.body().source());
+                        //TODO
+                    }
+                });
             }
             timerHandler.postDelayed(this,5000);
 
         }
     };
+}
+
+//TODO: 建議要新增一個DATA.java的類別檔
+class GPSData{
+    String uuid;
+    Double lat;
+    Double lon;
+    String user;
 }
